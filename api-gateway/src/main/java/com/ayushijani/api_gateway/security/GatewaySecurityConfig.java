@@ -25,10 +25,17 @@ public class GatewaySecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/user-service/auth/**", "/eureka/**").permitAll()
-                        .anyExchange().authenticated())
+
+                        //  ROLE-based restrictions
+                        .pathMatchers("/quiz-service/**").hasAnyRole("USER", "ADMIN")
+                        .pathMatchers("/question-service/**").hasRole("ADMIN")
+
+                        .anyExchange().authenticated()
+                )
                 .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
+
 }
 
 

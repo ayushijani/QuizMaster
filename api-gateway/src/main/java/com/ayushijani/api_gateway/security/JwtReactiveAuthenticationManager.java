@@ -19,20 +19,25 @@ public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationM
     private final JwtUtil jwtUtil;
 
     @Override
-    public Mono<Authentication> authenticate(Authentication authentication) throws AuthenticationException {
+    public Mono<Authentication> authenticate(Authentication authentication) {
         String token = authentication.getCredentials().toString();
 
         if (!jwtUtil.validate(token)) {
-            return Mono.empty(); // will be interpreted as unauthenticated
+            return Mono.empty();
         }
 
         Claims claims = jwtUtil.extractClaims(token);
         String username = claims.getSubject();
 
-        // Optional: extract roles from token
-        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        // extract roles from claims
+        List<String> roles = claims.get("roles", List.class);
+        List<SimpleGrantedAuthority> authorities = roles.stream()
+                .map(SimpleGrantedAuthority::new)
+                .toList();
 
         return Mono.just(new UsernamePasswordAuthenticationToken(username, token, authorities));
+
     }
+
 }
 

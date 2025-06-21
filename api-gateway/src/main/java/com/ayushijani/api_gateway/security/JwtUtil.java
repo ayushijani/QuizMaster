@@ -27,11 +27,14 @@ public class JwtUtil {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
+        } catch (ExpiredJwtException e) {
+            System.out.println("JWT expired at: " + e.getClaims().getExpiration());
         } catch (JwtException e) {
-            System.out.println("JWT validation error: " + e.getMessage());
-            return false;
+            System.out.println("JWT invalid: " + e.getMessage());
         }
+        return false;
     }
+
 
 
     public Claims extractClaims(String token) {
