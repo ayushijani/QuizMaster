@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     @Autowired
-    private AuthenticationConfiguration configuration;
+    AuthenticationManager am;
 
     @Autowired
     JwtUtil ju;
@@ -32,13 +32,11 @@ public class AuthController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest r) throws Exception {
-        AuthenticationManager am = configuration.getAuthenticationManager();
+    public ResponseEntity<?> login(@RequestBody LoginRequest r) {
         Authentication auth = am.authenticate(
                 new UsernamePasswordAuthenticationToken(r.getUsername(), r.getPassword()));
         String token = ju.generateToken((UserDetails) auth.getPrincipal());
         return ResponseEntity.ok(new JwtResponse(token));
     }
-
 }
 
