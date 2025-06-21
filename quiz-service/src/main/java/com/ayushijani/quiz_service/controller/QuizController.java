@@ -23,7 +23,12 @@ public class QuizController {
     }
 
     @PostMapping("get/{id}")
-    public ResponseEntity<List<QuestionWrapper>> getQuizQuestions(@PathVariable Integer id){
+    public ResponseEntity<List<QuestionWrapper>> getQuizQuestions(@PathVariable Integer id,@RequestHeader("X-User-Name") String username,
+                                                                  @RequestHeader("X-Roles") String roles)
+    {
+
+        System.out.println("User: " + username);
+        System.out.println("Roles: " + roles);
         return quizService.getQuizQuestions(id);
     }
 
