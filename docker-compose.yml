@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for user-service
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: masaladosa
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./user-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+  # PostgreSQL for quiz-service
+  quiz-db:
+    image: postgres:15
+    container_name: quiz-db
+    environment:
+      POSTGRES_DB: quizdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: masaladosa
+    ports:
+      - "5433:5432"  # Different host port to avoid conflict with main postgres
+
+  #PostgreSQL for question-service
+  question-db:
+    image: postgres:15
+    container_name: question-db
+    environment:
+      POSTGRES_DB: questiondb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: masaladosa
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./question-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # Eureka Service Registry
+  eureka-server:
+    build:
+      context: ./service-registry
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+
+  # User Service
+  user-service:
+    build:
+      context: ./user-service
+    container_name: user-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+      - eureka-server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/userdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: masaladosa
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+
+  # Quiz Service
+  quiz-service:
+    build:
+      context: ./quiz-service
+    container_name: quiz-service
+    ports:
+      - "8090:8090"
+    depends_on:
+      - quiz-db
+      - eureka-server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://quiz-db:5432/quizdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: masaladosa
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+
+
+  # Question Service
+  question-service:
+    build:
+      context: ./question-service
+    container_name: question-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - question-db
+      - eureka-server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://question-db:5432/questiondb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: masaladosa
+
+
+  # api gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8765:8765"
+    depends_on:
+      - eureka-server
+      - user-service
+      - quiz-service
+      - question-service
+    environment:
+      SPRING_APPLICATION_NAME: api-gateway
+      SERVER_PORT: 8765
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ThisIsASecretKeyThatIsAtLeast32CharsLong!
