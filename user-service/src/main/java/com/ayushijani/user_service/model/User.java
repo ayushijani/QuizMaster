@@ -18,7 +18,12 @@ public class User {
     private String username;
 
     private String password;
-
     @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "users_roles",
+            joinColumns = @JoinColumn(name = "users_id"),          // Column in join table referring to User
+            inverseJoinColumns = @JoinColumn(name = "roles_role_name")  // Column referring to Role
+    )
     private Set<Role> roles;
+
 }
