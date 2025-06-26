@@ -1,6 +1,30 @@
-version: '3.8'
+#version: '3.8'
 
 services:
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
   # PostgreSQL for user-service
   postgres:
     image: postgres:15
@@ -14,7 +38,6 @@ services:
     volumes:
       - ./user-service/init.sql:/docker-entrypoint-initdb.d/init.sql
 
-
   # PostgreSQL for quiz-service
   quiz-db:
     image: postgres:15
@@ -24,9 +47,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: masaladosa
     ports:
-      - "5433:5432"  # Different host port to avoid conflict with main postgres
+      - "5433:5432"
 
-  #PostgreSQL for question-service
+  # PostgreSQL for question-service
   question-db:
     image: postgres:15
     container_name: question-db
@@ -39,7 +62,7 @@ services:
     volumes:
       - ./question-service/init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  # Eureka Service Registry
+  # Eureka Server
   eureka-server:
     build:
       context: ./service-registry
@@ -72,13 +95,14 @@ services:
       - "8090:8090"
     depends_on:
       - quiz-db
+      - kafka
       - eureka-server
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://quiz-db:5432/quizdb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: masaladosa
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-
 
   # Question Service
   question-service:
@@ -94,9 +118,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://question-db:5432/questiondb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: masaladosa
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
 
-
-  # api gateway
+  # API Gateway
   api-gateway:
     build:
       context: ./api-gateway
@@ -113,3 +137,23 @@ services:
       SERVER_PORT: 8765
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       JWT_SECRET: ThisIsASecretKeyThatIsAtLeast32CharsLong!
+
+  # Email Service
+  email-service:
+    build:
+      context: ./email-service
+    container_name: email-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+      - eureka-server
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: quizmastermailsender@gmail.com
+      SPRING_MAIL_PASSWORD: dfrdmzvwshhauozj
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
