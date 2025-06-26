@@ -24,10 +24,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Autowired
     private CustomUserDetailsService uds;
 
+
+
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
+
+
+        String path = req.getRequestURI();
+
+        System.out.println("Request path: " + req.getRequestURI());
+
+        if (path.contains("/auth") || path.contains("/users/get")) {
+            System.out.println("Whitelisted path — skipping JWT validation");
+            chain.doFilter(req, res);
+            return;
+        }
+
         String header = req.getHeader("Authorization");
+
         if (header != null && header.startsWith("Bearer ")) {
             String jwt = header.substring(7);
             String username = jwtUtil.extractUsername(jwt);
